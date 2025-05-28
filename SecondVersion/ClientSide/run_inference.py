@@ -145,12 +145,12 @@ def main():
         print("No samples in the inference batch to evaluate.")
 
     
-    if os.path.exists(temp_download_model_path):
+    """if os.path.exists(temp_download_model_path):
         try:
             os.remove(temp_download_model_path)
             print(f"Cleaned up temporary download: {temp_download_model_path}")
         except OSError as e:
-            print(f"Error deleting temporary download {temp_download_model_path}: {e}")
+            print(f"Error deleting temporary download {temp_download_model_path}: {e}")"""
     print("\n--- Inference complete ---")
 
 if __name__ == "__main__":
