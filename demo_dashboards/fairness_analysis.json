@@ -1,0 +1,73 @@
+{
+  "id": null,
+  "title": "Federated Learning - Fairness Analysis",
+  "tags": [
+    "federated-learning",
+    "fairness"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Fairness Scores by Group",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_fairness_score",
+          "legendFormat": "{{group_type}} - {{metric_type}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 2,
+      "title": "Client Contribution Variance",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fl_client_contribution_variance",
+          "legendFormat": "Variance"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 3,
+      "title": "Client Participation Rate",
+      "type": "heatmap",
+      "targets": [
+        {
+          "expr": "fl_client_participation_rate",
+          "legendFormat": "{{region}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s"
+}

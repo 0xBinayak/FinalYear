@@ -1,0 +1,73 @@
+{
+  "id": null,
+  "title": "Federated Learning - Signal Processing",
+  "tags": [
+    "federated-learning",
+    "signal-processing"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Signal Quality (SNR)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_signal_quality_snr_db",
+          "legendFormat": "{{client_id}} - {{frequency_band}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 2,
+      "title": "Classification Confidence",
+      "type": "histogram",
+      "targets": [
+        {
+          "expr": "fl_classification_confidence",
+          "legendFormat": "{{signal_type}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 3,
+      "title": "Model Size Distribution",
+      "type": "histogram",
+      "targets": [
+        {
+          "expr": "fl_model_size_bytes / 1024",
+          "legendFormat": "{{compression_type}} (KB)"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "5s"
+}

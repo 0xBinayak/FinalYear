@@ -1,0 +1,12 @@
+{
+  "id": "debcf1016be22a3d",
+  "version": "1.0.0",
+  "round": 1,
+  "timestamp": "2025-08-12T05:38:16.484398",
+  "participating_clients": [
+    "comprehensive_client_2",
+    "comprehensive_client_3"
+  ],
+  "size_bytes": 664,
+  "checksum": "f7cc226d8e490209e7d310aa389499a4"
+}

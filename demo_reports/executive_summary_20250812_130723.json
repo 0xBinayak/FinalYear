@@ -1,0 +1,52 @@
+{
+  "report_type": "executive_summary",
+  "generated_at": "2025-08-12T13:07:23.958160",
+  "time_period_hours": 24.0,
+  "kpis": {
+    "model_accuracy": 0.797885142516913,
+    "total_cost": 59.41466666666667,
+    "roi_percentage": 55441.404571765,
+    "client_participation": 0.7120493476061043,
+    "privacy_score": 0.8017283752544297,
+    "fairness_score": 0.6686569912780338
+  },
+  "cost_metrics": {
+    "compute_cost": 8.28,
+    "network_cost": 3.1200000000000006,
+    "storage_cost": 0.014666666666666666,
+    "operational_cost": 48.0,
+    "total_cost": 59.41466666666667,
+    "cost_per_client": 4.5703589743589745,
+    "cost_per_training_round": 4.951222222222222,
+    "cost_per_accuracy_point": 24.756111111111114
+  },
+  "performance_metrics": {
+    "model_accuracy": 0.797885142516913,
+    "training_time": 24.44321756008904,
+    "convergence_rounds": 32,
+    "client_participation_rate": 0.7120493476061043,
+    "network_efficiency": 0.7343906274238322,
+    "resource_utilization": 0.6781792618011333,
+    "privacy_preservation_score": 0.8017283752544297,
+    "fairness_score": 0.6686569912780338
+  },
+  "roi_metrics": {
+    "total_investment": 57.614666666666665,
+    "operational_savings": 4976.518492571845,
+    "accuracy_improvement_value": 1155.619183783596,
+    "privacy_compliance_value": 8461.689894383171,
+    "time_to_market_value": 17406.16753526855,
+    "total_benefits": 31999.99510600716,
+    "roi_percentage": 55441.404571765,
+    "payback_period_months": 0.05401375826071707
+  },
+  "benchmark_comparison": {
+    "accuracy_vs_centralized": 0.9386884029610741,
+    "cost_vs_centralized": 0.05941466666666667,
+    "privacy_vs_industry": 1.1453262503634711,
+    "fairness_vs_industry": 0.8915426550373784
+  },
+  "high_impact_insights": [],
+  "total_insights": 1,
+  "summary": "The federated learning system demonstrates needs improvement performance with 79.8% accuracy \n        and strong ROI of 55441.4%. Client participation is at 71.2% \n        with strong privacy preservation (80.2%). \n        \n        Key focus areas: ."
+}

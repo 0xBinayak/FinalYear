@@ -1,0 +1,89 @@
+{
+  "report_type": "performance_benchmark",
+  "generated_at": "2025-08-12T13:07:23.958662",
+  "time_period_hours": 24.0,
+  "performance_metrics": {
+    "model_accuracy": 0.833879713313007,
+    "training_time": 32.60289604968989,
+    "convergence_rounds": 22,
+    "client_participation_rate": 0.669067496535983,
+    "network_efficiency": 0.73107130762472,
+    "resource_utilization": 0.6637390283689574,
+    "privacy_preservation_score": 0.838193090260476,
+    "fairness_score": 0.7998827497519867
+  },
+  "benchmarks": {
+    "accuracy": {
+      "current": 0.833879713313007,
+      "centralized_baseline": 0.85,
+      "industry_average": 0.8,
+      "target": 0.9
+    },
+    "training_time": {
+      "current": 32.60289604968989,
+      "centralized_baseline": 120,
+      "industry_average": 180,
+      "target": 90
+    },
+    "privacy_score": {
+      "current": 0.838193090260476,
+      "industry_average": 0.7,
+      "target": 0.85
+    },
+    "fairness_score": {
+      "current": 0.7998827497519867,
+      "industry_average": 0.75,
+      "target": 0.85
+    }
+  },
+  "performance_trends": [
+    {
+      "period": 1,
+      "accuracy": 0.7666190967385906,
+      "training_time": 62.69711090854349,
+      "client_participation": 0.6065607037927733
+    },
+    {
+      "period": 2,
+      "accuracy": 0.7707954690904704,
+      "training_time": 56.94853205394537,
+      "client_participation": 0.5306315420005863
+    },
+    {
+      "period": 3,
+      "accuracy": 0.762600740428521,
+      "training_time": 55.21344140020114,
+      "client_participation": 0.6067310424124803
+    },
+    {
+      "period": 4,
+      "accuracy": 0.7865282446105982,
+      "training_time": 49.24837209969174,
+      "client_participation": 0.640603854095091
+    },
+    {
+      "period": 5,
+      "accuracy": 0.7678233695315726,
+      "training_time": 50.9580063461167,
+      "client_participation": 0.736887557006175
+    },
+    {
+      "period": 6,
+      "accuracy": 0.803720702296383,
+      "training_time": 50.85407937596776,
+      "client_participation": 0.6639677450022758
+    },
+    {
+      "period": 7,
+      "accuracy": 0.7975977101785962,
+      "training_time": 40.36884098544523,
+      "client_participation": 0.8705068780250701
+    }
+  ],
+  "competitive_position": {
+    "accuracy_ranking": "Average",
+    "privacy_ranking": "Above Average",
+    "efficiency_ranking": "Above Average",
+    "overall_score": 0.8010480370660676
+  }
+}

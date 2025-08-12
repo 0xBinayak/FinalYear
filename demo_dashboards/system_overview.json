@@ -1,0 +1,134 @@
+{
+  "id": null,
+  "title": "Federated Learning - System Overview",
+  "tags": [
+    "federated-learning",
+    "overview"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active Clients",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(fl_active_clients)",
+          "legendFormat": "Total Active Clients"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "fieldConfig": null
+    },
+    {
+      "id": 2,
+      "title": "Training Rounds Completed",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(fl_training_rounds_total[5m]))",
+          "legendFormat": "Rounds/min"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 3,
+      "title": "Model Accuracy",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_model_accuracy",
+          "legendFormat": "{{model_version}} - {{dataset}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 4,
+      "title": "Request Rate by Component",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(fl_requests_total[5m])) by (component)",
+          "legendFormat": "{{component}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 5,
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_memory_usage_bytes / 1024 / 1024",
+          "legendFormat": "{{component}} - {{instance_id}} (MB)"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 6,
+      "title": "Network Latency",
+      "type": "heatmap",
+      "targets": [
+        {
+          "expr": "fl_network_latency_seconds",
+          "legendFormat": "{{source}} -> {{destination}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "options": null,
+      "fieldConfig": null
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "5s"
+}

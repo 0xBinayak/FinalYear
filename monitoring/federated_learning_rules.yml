@@ -1,0 +1,183 @@
+groups:
+  - name: federated_learning_performance
+    rules:
+      # Model performance alerts
+      - alert: ModelAccuracyDrop
+        expr: decrease(fl_model_accuracy[10m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model accuracy has dropped significantly"
+          description: "Model accuracy has decreased by more than 5% in the last 10 minutes"
+
+      - alert: TrainingStalled
+        expr: rate(fl_training_rounds_total[10m]) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Training has stalled"
+          description: "No training rounds completed in the last 10 minutes"
+
+      - alert: ConvergenceStalled
+        expr: abs(fl_convergence_rate) < 0.001
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model convergence has stalled"
+          description: "Model convergence rate is near zero for 15 minutes"
+
+  - name: federated_learning_privacy
+    rules:
+      # Privacy budget alerts
+      - alert: PrivacyBudgetExhausted
+        expr: fl_privacy_budget_used > 0.9
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Privacy budget nearly exhausted"
+          description: "Privacy budget usage is above 90% for client {{ $labels.client_id }}"
+
+      - alert: PrivacyViolationDetected
+        expr: increase(fl_privacy_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Privacy violation detected"
+          description: "{{ $value }} privacy violations detected in the last 5 minutes"
+
+  - name: federated_learning_fairness
+    rules:
+      # Fairness alerts
+      - alert: FairnessScoreLow
+        expr: fl_fairness_score < 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low fairness score detected"
+          description: "Fairness score for {{ $labels.group_type }} is below 0.7"
+
+      - alert: HighClientContributionVariance
+        expr: fl_client_contribution_variance > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High variance in client contributions"
+          description: "Client contribution variance is {{ $value }}, indicating potential bias"
+
+  - name: federated_learning_system
+    rules:
+      # System performance alerts
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(fl_request_duration_seconds_bucket[5m])) > 2.0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "95th percentile request latency is {{ $value }}s"
+
+      - alert: HighErrorRate
+        expr: rate(fl_requests_total{status=~"4..|5.."}[5m]) / rate(fl_requests_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: LowClientParticipation
+        expr: sum(fl_active_clients) < 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low client participation"
+          description: "Only {{ $value }} clients are currently active"
+
+      - alert: HighMemoryUsage
+        expr: fl_memory_usage_bytes / 1024 / 1024 / 1024 > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}GB for {{ $labels.component }}"
+
+      - alert: HighCPUUsage
+        expr: fl_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% for {{ $labels.component }}"
+
+  - name: federated_learning_network
+    rules:
+      # Network alerts
+      - alert: HighNetworkLatency
+        expr: histogram_quantile(0.95, rate(fl_network_latency_seconds_bucket[5m])) > 1.0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network latency"
+          description: "95th percentile network latency is {{ $value }}s between {{ $labels.source }} and {{ $labels.destination }}"
+
+      - alert: HighBandwidthUsage
+        expr: fl_bandwidth_usage_bytes_per_second / 1024 / 1024 > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High bandwidth usage"
+          description: "Bandwidth usage is {{ $value }}MB/s for {{ $labels.component }}"
+
+  - name: federated_learning_signal_processing
+    rules:
+      # Signal processing alerts
+      - alert: LowSignalQuality
+        expr: fl_signal_quality_snr_db < 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low signal quality"
+          description: "Signal SNR is {{ $value }}dB for client {{ $labels.client_id }}"
+
+      - alert: LowClassificationConfidence
+        expr: histogram_quantile(0.5, rate(fl_classification_confidence_bucket[5m])) < 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low classification confidence"
+          description: "Median classification confidence is {{ $value }} for {{ $labels.signal_type }}"
+
+  - name: federated_learning_anomalies
+    rules:
+      # Anomaly detection alerts
+      - alert: AnomalyDetected
+        expr: fl_anomaly_score > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Anomaly detected"
+          description: "Anomaly score is {{ $value }} for {{ $labels.anomaly_type }} in {{ $labels.component }}"
+
+      - alert: HighAnomalyRate
+        expr: rate(fl_anomalies_detected_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High anomaly detection rate"
+          description: "{{ $value }} anomalies detected per second in the last 10 minutes"

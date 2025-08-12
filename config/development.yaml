@@ -1,0 +1,19 @@
+# Development environment configuration
+environment: development
+debug: true
+
+database:
+  host: localhost
+  database: federated_pipeline_dev
+
+network:
+  port: 8000
+
+federated_learning:
+  min_clients: 1
+  max_clients: 10
+  rounds: 5
+
+monitoring:
+  log_level: "DEBUG"
+  enable_tracing: true

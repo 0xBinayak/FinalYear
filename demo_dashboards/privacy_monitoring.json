@@ -1,0 +1,73 @@
+{
+  "id": null,
+  "title": "Federated Learning - Privacy Monitoring",
+  "tags": [
+    "federated-learning",
+    "privacy"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Privacy Budget Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_privacy_budget_used",
+          "legendFormat": "{{client_id}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 2,
+      "title": "Privacy Epsilon Values",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fl_privacy_epsilon",
+          "legendFormat": "{{component}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 3,
+      "title": "Privacy Violations",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(fl_privacy_violations_total[5m])) by (violation_type)",
+          "legendFormat": "{{violation_type}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "10s"
+}

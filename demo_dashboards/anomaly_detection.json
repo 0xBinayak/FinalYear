@@ -1,0 +1,92 @@
+{
+  "id": null,
+  "title": "Federated Learning - Anomaly Detection",
+  "tags": [
+    "federated-learning",
+    "anomaly-detection"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Anomaly Scores",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "fl_anomaly_score",
+          "legendFormat": "{{component}} - {{anomaly_type}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 2,
+      "title": "Anomalies Detected",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(fl_anomalies_detected_total)",
+          "legendFormat": "Total Anomalies"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 3,
+      "title": "Anomaly Severity Distribution",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "sum(fl_anomalies_detected_total) by (severity)",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "options": null,
+      "fieldConfig": null
+    },
+    {
+      "id": 4,
+      "title": "Anomaly Timeline",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(fl_anomalies_detected_total[1m])) by (anomaly_type)",
+          "legendFormat": "{{anomaly_type}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "options": null,
+      "fieldConfig": null
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "10s"
+}

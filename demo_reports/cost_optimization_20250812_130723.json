@@ -1,0 +1,67 @@
+{
+  "report_type": "cost_optimization",
+  "generated_at": "2025-08-12T13:07:23.958160",
+  "time_period_hours": 24.0,
+  "cost_metrics": {
+    "compute_cost": 6.84,
+    "network_cost": 2.16,
+    "storage_cost": 0.014666666666666666,
+    "operational_cost": 48.0,
+    "total_cost": 57.01466666666667,
+    "cost_per_client": 6.334962962962964,
+    "cost_per_training_round": 4.751222222222222,
+    "cost_per_accuracy_point": 23.756111111111114
+  },
+  "cost_breakdown": {
+    "compute": 0.11996913074998244,
+    "network": 0.037884988657889196,
+    "storage": 0.0002572437501461612,
+    "operational": 0.8418886368419821
+  },
+  "optimization_opportunities": [],
+  "cost_trends": [
+    {
+      "period": 1,
+      "total_cost": 686.7345701258868,
+      "compute_cost": 372.3756077320632,
+      "network_cost": 179.40897103982462
+    },
+    {
+      "period": 2,
+      "total_cost": 978.4555676722571,
+      "compute_cost": 415.4119355424899,
+      "network_cost": 207.87559083999852
+    },
+    {
+      "period": 3,
+      "total_cost": 810.8958435942593,
+      "compute_cost": 577.9763578662289,
+      "network_cost": 232.41962727474285
+    },
+    {
+      "period": 4,
+      "total_cost": 947.6004917275026,
+      "compute_cost": 465.6523365326079,
+      "network_cost": 256.61995079223857
+    },
+    {
+      "period": 5,
+      "total_cost": 1082.8243125438337,
+      "compute_cost": 457.94415663706195,
+      "network_cost": 241.47972370439868
+    },
+    {
+      "period": 6,
+      "total_cost": 868.9491165199195,
+      "compute_cost": 526.5815291035042,
+      "network_cost": 224.2055619243662
+    },
+    {
+      "period": 7,
+      "total_cost": 1094.191147786997,
+      "compute_cost": 426.59140255565444,
+      "network_cost": 339.0956465399608
+    }
+  ],
+  "total_potential_savings": 0
+}

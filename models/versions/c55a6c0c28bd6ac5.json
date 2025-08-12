@@ -1,0 +1,11 @@
+{
+  "id": "c55a6c0c28bd6ac5",
+  "version": "1.0.0",
+  "round": 1,
+  "timestamp": "2025-08-12T05:29:05.868285",
+  "participating_clients": [
+    "client_1"
+  ],
+  "size_bytes": 424,
+  "checksum": "a9d1f7090bfc3ab5a8579950504a4db3"
+}

@@ -1,0 +1,37 @@
+# Base configuration for all environments
+environment: development
+debug: true
+
+database:
+  host: localhost
+  port: 5432
+  database: federated_pipeline
+  username: postgres
+  password: ""
+
+network:
+  host: "0.0.0.0"
+  port: 8000
+  max_connections: 100
+  timeout: 30
+
+federated_learning:
+  aggregation_strategy: "fedavg"
+  min_clients: 2
+  max_clients: 100
+  rounds: 10
+  local_epochs: 5
+  learning_rate: 0.01
+  batch_size: 32
+
+privacy:
+  enable_differential_privacy: false
+  epsilon: 1.0
+  delta: 1e-5
+  noise_multiplier: 1.0
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "INFO"
+  enable_tracing: false

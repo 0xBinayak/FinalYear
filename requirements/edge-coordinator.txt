@@ -1,0 +1,7 @@
+# Edge Coordinator requirements
+-r base.txt
+torch>=2.0.0
+redis>=4.5.0
+psutil>=5.9.0
+netifaces>=0.11.0
+grpcio>=1.56.0

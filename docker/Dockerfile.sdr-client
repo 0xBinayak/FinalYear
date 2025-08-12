@@ -1,0 +1,34 @@
+# Multi-stage build for SDR Client
+FROM python:3.11-slim as base
+
+# Install SDR dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    librtlsdr-dev \
+    libusb-1.0-0-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements/sdr-client.txt .
+RUN pip install --no-cache-dir -r sdr-client.txt
+
+# Development stage
+FROM base as development
+COPY requirements/dev.txt .
+RUN pip install --no-cache-dir -r dev.txt
+COPY . .
+CMD ["python", "-m", "src.sdr_client.main"]
+
+# Production stage
+FROM base as production
+COPY src/ ./src/
+COPY config/ ./config/
+
+RUN useradd --create-home --shell /bin/bash app
+USER app
+
+# SDR hardware access required
+CMD ["python", "-m", "src.sdr_client.main"]

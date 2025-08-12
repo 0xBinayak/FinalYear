@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: federated_pipeline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and message queuing
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aggregation Server
+  aggregation-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.aggregation-server
+      target: development
+    ports:
+      - "8000:8000"
+      - "9090:9090"  # Metrics port
+    environment:
+      - ENVIRONMENT=development
+      - DB_HOST=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+    command: ["python", "-m", "src.aggregation_server.main"]
+
+  # Edge Coordinator
+  edge-coordinator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.edge-coordinator
+      target: development
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=development
+      - AGGREGATION_SERVER_URL=http://aggregation-server:8000
+      - REGION=us-west-1
+    depends_on:
+      - aggregation-server
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+
+  # SDR Client (requires SDR hardware)
+  sdr-client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sdr-client
+      target: development
+    environment:
+      - ENVIRONMENT=development
+      - EDGE_COORDINATOR_URL=http://edge-coordinator:8001
+      - SDR_TYPE=rtlsdr
+    depends_on:
+      - edge-coordinator
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - /dev/bus/usb:/dev/bus/usb  # USB access for SDR hardware
+    privileged: true  # Required for USB device access
+
+  # Mobile Client
+  mobile-client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mobile-client
+      target: development
+    environment:
+      - ENVIRONMENT=development
+      - AGGREGATION_SERVER_URL=http://aggregation-server:8000
+    depends_on:
+      - aggregation-server
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+
+  # Monitoring and Observability Stack
+  
+  # Metrics Collection Service
+  metrics-collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.metrics-collector
+      target: development
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+      - PROMETHEUS_URL=http://prometheus:9090
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+    depends_on:
+      - prometheus
+    command: ["python", "-m", "src.monitoring.collector"]
+
+  # Prometheus for metrics storage
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/federated_learning_rules.yml:/etc/prometheus/federated_learning_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
+  # AlertManager for alert routing
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+volumes:
+  postgres_data:
+  grafana_data:
+  prometheus_data:
+  alertmanager_data:
