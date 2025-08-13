@@ -1,0 +1,47 @@
+{
+  "demo_info": {
+    "timestamp": "2025-08-13T08:06:09.911589",
+    "demo_type": "simple_real_world",
+    "version": "1.0"
+  },
+  "dataset_summary": {
+    "total_samples": 200,
+    "modulation_types": [
+      "8PSK",
+      "QAM16",
+      "BPSK",
+      "QAM64",
+      "AM",
+      "FM",
+      "QPSK"
+    ],
+    "locations": [
+      "Urban Downtown",
+      "Indoor Office",
+      "Rural Farmland",
+      "Suburban Area"
+    ],
+    "snr_statistics": {
+      "mean": 12.991889763694008,
+      "std": 6.85787766498761,
+      "min": -2.3343186906675086,
+      "max": 27.969697947350348
+    }
+  },
+  "federated_learning_results": {
+    "num_clients": 4,
+    "final_accuracy": 0.8906913535200209,
+    "training_rounds": 10,
+    "client_distribution": {
+      "client_1_urban_downtown": 50,
+      "client_2_indoor_office": 50,
+      "client_3_rural_farmland": 50,
+      "client_4_suburban_area": 50
+    }
+  },
+  "performance_metrics": {
+    "accuracy_achieved": true,
+    "data_quality_score": 0.4330629921231336,
+    "client_diversity": 4
+  }
+}

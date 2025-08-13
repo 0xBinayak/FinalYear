@@ -1,37 +1,86 @@
-# Multi-stage build for Aggregation Server
-FROM python:3.11-slim as base
+# Multi-stage, multi-architecture build for Aggregation Server
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+FROM --platform=$BUILDPLATFORM python:3.11-slim as base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements
-COPY requirements/aggregation-server.txt .
-RUN pip install --no-cache-dir -r aggregation-server.txt
+# Copy requirements and install Python dependencies
+COPY requirements/base.txt requirements/aggregation-server.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r aggregation-server.txt
 
 # Development stage
 FROM base as development
 COPY requirements/dev.txt .
 RUN pip install --no-cache-dir -r dev.txt
-COPY . .
+
+# Copy source code
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV ENVIRONMENT=development
+
+# Expose ports
+EXPOSE 8000 9090
+
 CMD ["python", "-m", "src.aggregation_server.main"]
 
 # Production stage
 FROM base as production
+
+# Copy source code and configuration
 COPY src/ ./src/
 COPY config/ ./config/
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app
+# Create non-root user for security
+RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app && \
+    chown -R app:app /app
+
+# Switch to non-root user
 USER app
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV ENVIRONMENT=production
+
+# Expose ports
+EXPOSE 8000 9090
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
+# Use exec form for proper signal handling
 CMD ["python", "-m", "src.aggregation_server.main"]
+
+# Testing stage for CI/CD
+FROM development as testing
+COPY requirements/dev.txt .
+RUN pip install --no-cache-dir -r dev.txt
+
+# Copy test files
+COPY test_*.py ./
+COPY src/*/test_*.py ./
+
+# Run tests
+RUN python -m pytest -v --cov=src --cov-report=xml --cov-report=term-missing
+
+# Benchmark stage for performance testing
+FROM production as benchmark
+USER root
+RUN pip install --no-cache-dir locust
+USER app
+
+COPY benchmarks/ ./benchmarks/
+CMD ["locust", "-f", "benchmarks/aggregation_server_benchmark.py"]

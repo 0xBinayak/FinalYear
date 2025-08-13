@@ -1,0 +1,40 @@
+# Staging environment configuration
+environment: staging
+debug: false
+
+database:
+  host: postgres-staging
+  database: federated_pipeline_staging
+
+network:
+  port: 8000
+  max_connections: 500
+
+federated_learning:
+  min_clients: 5
+  max_clients: 500
+  rounds: 25
+  aggregation_strategy: "byzantine_robust"
+
+privacy:
+  enable_differential_privacy: true
+  epsilon: 0.8
+
+monitoring:
+  log_level: "INFO"
+  enable_tracing: true
+  enable_metrics: true
+
+ab_test:
+  enabled: true
+  test_name: "staging_hyperparameter_test"
+  traffic_split: 0.5
+  parameters:
+    A:
+      federated_learning:
+        learning_rate: 0.01
+        batch_size: 32
+    B:
+      federated_learning:
+        learning_rate: 0.005
+        batch_size: 64

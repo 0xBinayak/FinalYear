@@ -1,0 +1,26 @@
+# A/B Test Variant Configurations
+# Example configurations for hyperparameter optimization
+
+A:
+  # Control group - current best parameters
+  federated_learning:
+    learning_rate: 0.01
+    batch_size: 32
+    local_epochs: 5
+    aggregation_strategy: "fedavg"
+  
+  privacy:
+    epsilon: 1.0
+    noise_multiplier: 1.0
+
+B:
+  # Test group - experimental parameters
+  federated_learning:
+    learning_rate: 0.005  # Lower learning rate
+    batch_size: 64        # Larger batch size
+    local_epochs: 3       # Fewer local epochs
+    aggregation_strategy: "byzantine_robust"  # More robust aggregation
+  
+  privacy:
+    epsilon: 0.8          # Stronger privacy
+    noise_multiplier: 1.2 # More noise for privacy

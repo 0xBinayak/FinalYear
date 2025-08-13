@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: edge-coordinator
+  namespace: federated-pipeline
+  labels:
+    app.kubernetes.io/name: edge-coordinator
+    app.kubernetes.io/component: edge
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: edge-coordinator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: edge-coordinator
+        app.kubernetes.io/component: edge
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      imagePullSecrets:
+      - name: registry-secret
+      nodeSelector:
+        node-type: edge
+      tolerations:
+      - key: "edge-node"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      containers:
+      - name: edge-coordinator
+        image: registry.company.com/federated-pipeline/edge-coordinator:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8001
+          name: http
+          protocol: TCP
+        - containerPort: 9091
+          name: metrics
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: AGGREGATION_SERVER_URL
+          value: "http://aggregation-server-service:8000"
+        - name: REGION
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['topology.kubernetes.io/region']
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: local-storage
+          mountPath: /app/data
+        - name: device-access
+          mountPath: /dev
+          readOnly: true
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+      volumes:
+      - name: config-volume
+        configMap:
+          name: federated-pipeline-config
+      - name: local-storage
+        hostPath:
+          path: /var/lib/federated-pipeline/edge-coordinator
+          type: DirectoryOrCreate
+      - name: device-access
+        hostPath:
+          path: /dev
+          type: Directory
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-coordinator-service
+  namespace: federated-pipeline
+  labels:
+    app.kubernetes.io/name: edge-coordinator
+    app.kubernetes.io/component: edge
+spec:
+  selector:
+    app.kubernetes.io/name: edge-coordinator
+  ports:
+  - port: 8001
+    targetPort: 8001
+    name: http
+    protocol: TCP
+  - port: 9091
+    targetPort: 9091
+    name: metrics
+    protocol: TCP
+  type: ClusterIP
+  clusterIP: None  # Headless service for DaemonSet

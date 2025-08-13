@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: federated-pipeline-config
+  namespace: federated-pipeline
+  labels:
+    app.kubernetes.io/name: federated-pipeline
+    app.kubernetes.io/component: config
+data:
+  base.yaml: |
+    environment: production
+    debug: false
+    
+    database:
+      host: postgres-service
+      port: 5432
+      database: federated_pipeline
+      username: postgres
+    
+    network:
+      host: "0.0.0.0"
+      port: 8000
+      max_connections: 1000
+      timeout: 30
+    
+    federated_learning:
+      aggregation_strategy: "byzantine_robust"
+      min_clients: 10
+      max_clients: 1000
+      rounds: 50
+      local_epochs: 5
+      learning_rate: 0.01
+      batch_size: 32
+    
+    privacy:
+      enable_differential_privacy: true
+      epsilon: 0.5
+      delta: 1e-5
+      noise_multiplier: 1.2
+    
+    monitoring:
+      enable_metrics: true
+      metrics_port: 9090
+      log_level: "INFO"
+      enable_tracing: false
+  
+  production.yaml: |
+    environment: production
+    debug: false
+    
+    database:
+      host: postgres-service
+    
+    federated_learning:
+      aggregation_strategy: "byzantine_robust"
+      min_clients: 50
+      max_clients: 5000
+    
+    privacy:
+      enable_differential_privacy: true
+      epsilon: 0.3
+    
+    monitoring:
+      log_level: "WARNING"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: federated-pipeline
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+    
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager-service:9093
+    
+    scrape_configs:
+      - job_name: 'aggregation-server'
+        static_configs:
+          - targets: ['aggregation-server-service:9090']
+        metrics_path: /metrics
+        scrape_interval: 10s
+      
+      - job_name: 'edge-coordinator'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - federated-pipeline
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: edge-coordinator-service
+      
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - federated-pipeline
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+  
+  federated_learning_rules.yml: |
+    groups:
+    - name: federated_learning
+      rules:
+      - alert: LowClientParticipation
+        expr: federated_learning_active_clients < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low client participation in federated learning"
+          description: "Only {{ $value }} clients are participating in federated learning"
+      
+      - alert: ModelConvergenceStalled
+        expr: increase(federated_learning_rounds_total[30m]) == 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model convergence has stalled"
+          description: "No federated learning rounds completed in the last 30 minutes"
+      
+      - alert: HighPrivacyBudgetUsage
+        expr: federated_learning_privacy_budget_used > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High privacy budget usage"
+          description: "Privacy budget usage is at {{ $value | humanizePercentage }}"

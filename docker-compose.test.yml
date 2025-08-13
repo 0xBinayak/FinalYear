@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: federated_pipeline_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Test Redis
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Aggregation Server for Testing
+  aggregation-server-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.aggregation-server
+      target: testing
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    environment:
+      - ENVIRONMENT=testing
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./test_data:/app/test_data
+    command: ["python", "-m", "pytest", "-v", "--cov=src", "--cov-report=xml"]
+
+  # Edge Coordinator for Testing
+  edge-coordinator-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.edge-coordinator
+      target: development
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=testing
+      - AGGREGATION_SERVER_URL=http://aggregation-server-test:8000
+      - REGION=test-region
+    depends_on:
+      - aggregation-server-test
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+
+  # Test Data Generator
+  test-data-generator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.test-data-generator
+    environment:
+      - ENVIRONMENT=testing
+      - AGGREGATION_SERVER_URL=http://aggregation-server-test:8000
+    depends_on:
+      - aggregation-server-test
+    volumes:
+      - ./test_data:/app/test_data
+      - ./src:/app/src
+    command: ["python", "-m", "src.common.test_data_generator"]
+
+volumes:
+  test_data:

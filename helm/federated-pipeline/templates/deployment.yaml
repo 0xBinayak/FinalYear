@@ -1,0 +1,129 @@
+{{- if .Values.aggregationServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "federated-pipeline.fullname" . }}-aggregation-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "federated-pipeline.labels" . | nindent 4 }}
+    app.kubernetes.io/component: aggregation-server
+spec:
+  {{- if not .Values.aggregationServer.autoscaling.enabled }}
+  replicas: {{ .Values.aggregationServer.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "federated-pipeline.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: aggregation-server
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.aggregationServer.service.metricsPort }}"
+        prometheus.io/path: "/metrics"
+      labels:
+        {{- include "federated-pipeline.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: aggregation-server
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "federated-pipeline.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: aggregation-server
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.aggregationServer.image.repository }}:{{ .Values.aggregationServer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.aggregationServer.service.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.aggregationServer.service.metricsPort }}
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.environment }}
+            - name: DB_HOST
+              value: {{ include "federated-pipeline.postgresql.fullname" . }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "federated-pipeline.postgresql.secretName" . }}
+                  key: postgres-password
+            - name: REDIS_HOST
+              value: {{ include "federated-pipeline.redis.fullname" . }}-master
+            {{- if .Values.abTesting.enabled }}
+            - name: AB_TEST_ENABLED
+              value: "true"
+            - name: AB_TEST_NAME
+              value: {{ .Values.abTesting.testName }}
+            - name: AB_TEST_TRAFFIC_SPLIT
+              value: {{ .Values.abTesting.trafficSplit | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: model-storage
+              mountPath: /app/models
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          resources:
+            {{- toYaml .Values.aggregationServer.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "federated-pipeline.fullname" . }}-config
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: {{ include "federated-pipeline.fullname" . }}-model-storage
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.aggregationServer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aggregationServer.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aggregationServer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

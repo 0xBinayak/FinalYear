@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Federated Pipeline Configuration Schema",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "type": "string",
+      "enum": ["development", "staging", "production", "testing"]
+    },
+    "debug": {
+      "type": "boolean"
+    },
+    "config_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "database": {
+          "type": "string",
+          "minLength": 1
+        },
+        "username": {
+          "type": "string",
+          "minLength": 1
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "required": ["host", "port", "database", "username"]
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "max_connections": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["host", "port"]
+    },
+    "federated_learning": {
+      "type": "object",
+      "properties": {
+        "aggregation_strategy": {
+          "type": "string",
+          "enum": ["fedavg", "fedprox", "scaffold", "byzantine_robust"]
+        },
+        "min_clients": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_clients": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rounds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "local_epochs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "learning_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["aggregation_strategy", "min_clients", "max_clients"]
+    },
+    "privacy": {
+      "type": "object",
+      "properties": {
+        "enable_differential_privacy": {
+          "type": "boolean"
+        },
+        "epsilon": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 10
+        },
+        "delta": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "noise_multiplier": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "enable_metrics": {
+          "type": "boolean"
+        },
+        "metrics_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "log_level": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        },
+        "enable_tracing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ab_test": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "test_name": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["A", "B"]
+        },
+        "traffic_split": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "start_time": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "end_time": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "required": ["environment"]
+}

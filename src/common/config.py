@@ -8,6 +8,7 @@ import json
 import threading
 import time
 import hashlib
+import uuid
 from typing import Dict, Any, Optional, List, Callable, Union
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
@@ -15,8 +16,136 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from jsonschema import validate, ValidationError
 import logging
+from datetime import datetime, timedelta
+import random
 
 logger = logging.getLogger(__name__)
+
+
+class ABTestManager:
+    """A/B testing manager for hyperparameter optimization"""
+    
+    def __init__(self):
+        self._active_tests: Dict[str, Dict[str, Any]] = {}
+        self._user_assignments: Dict[str, Dict[str, str]] = {}
+        self._test_results: Dict[str, List[Dict[str, Any]]] = {}
+        self._lock = threading.RLock()
+    
+    def create_test(self, test_name: str, variants: Dict[str, Dict[str, Any]], 
+                   traffic_split: float = 0.5, duration_hours: int = 24) -> str:
+        """Create a new A/B test"""
+        with self._lock:
+            test_id = str(uuid.uuid4())
+            start_time = datetime.now()
+            end_time = start_time + timedelta(hours=duration_hours)
+            
+            self._active_tests[test_name] = {
+                "test_id": test_id,
+                "variants": variants,
+                "traffic_split": traffic_split,
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "status": "active"
+            }
+            
+            logger.info(f"Created A/B test '{test_name}' with ID {test_id}")
+            return test_id
+    
+    def get_variant(self, test_name: str, user_id: str = None, 
+                   traffic_split: float = 0.5) -> str:
+        """Get variant assignment for a user/session"""
+        with self._lock:
+            if user_id is None:
+                user_id = str(uuid.uuid4())
+            
+            # Check if user already has assignment
+            if (test_name in self._user_assignments and 
+                user_id in self._user_assignments[test_name]):
+                return self._user_assignments[test_name][user_id]
+            
+            # Check if test is active
+            if test_name in self._active_tests:
+                test = self._active_tests[test_name]
+                end_time = datetime.fromisoformat(test["end_time"])
+                if datetime.now() > end_time:
+                    test["status"] = "expired"
+                    return "A"  # Default to control group
+            
+            # Assign variant based on traffic split
+            hash_input = f"{test_name}:{user_id}"
+            hash_value = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)
+            variant = "A" if (hash_value % 100) < (traffic_split * 100) else "B"
+            
+            # Store assignment
+            if test_name not in self._user_assignments:
+                self._user_assignments[test_name] = {}
+            self._user_assignments[test_name][user_id] = variant
+            
+            return variant
+    
+    def record_metric(self, test_name: str, user_id: str, metric_name: str, 
+                     metric_value: float, metadata: Dict[str, Any] = None):
+        """Record a metric for A/B test analysis"""
+        with self._lock:
+            if test_name not in self._test_results:
+                self._test_results[test_name] = []
+            
+            variant = self.get_variant(test_name, user_id)
+            
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id,
+                "variant": variant,
+                "metric_name": metric_name,
+                "metric_value": metric_value,
+                "metadata": metadata or {}
+            }
+            
+            self._test_results[test_name].append(result)
+    
+    def get_test_results(self, test_name: str) -> Dict[str, Any]:
+        """Get aggregated results for an A/B test"""
+        with self._lock:
+            if test_name not in self._test_results:
+                return {"error": "No results found for test"}
+            
+            results = self._test_results[test_name]
+            
+            # Aggregate by variant
+            variant_stats = {"A": [], "B": []}
+            for result in results:
+                variant = result["variant"]
+                if variant in variant_stats:
+                    variant_stats[variant].append(result["metric_value"])
+            
+            # Calculate statistics
+            stats = {}
+            for variant, values in variant_stats.items():
+                if values:
+                    stats[variant] = {
+                        "count": len(values),
+                        "mean": sum(values) / len(values),
+                        "min": min(values),
+                        "max": max(values)
+                    }
+                else:
+                    stats[variant] = {"count": 0, "mean": 0, "min": 0, "max": 0}
+            
+            return {
+                "test_name": test_name,
+                "total_samples": len(results),
+                "variant_stats": stats,
+                "raw_results": results
+            }
+    
+    def stop_test(self, test_name: str) -> Dict[str, Any]:
+        """Stop an active A/B test and return results"""
+        with self._lock:
+            if test_name in self._active_tests:
+                self._active_tests[test_name]["status"] = "stopped"
+                self._active_tests[test_name]["end_time"] = datetime.now().isoformat()
+            
+            return self.get_test_results(test_name)
 
 
 @dataclass

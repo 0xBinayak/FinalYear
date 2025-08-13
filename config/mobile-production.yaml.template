@@ -1,0 +1,164 @@
+# Mobile Client Production Configuration Template
+# This configuration is embedded in the mobile application
+
+# Mobile Client Configuration
+mobile_client:
+  client_type: "mobile"
+  app_version: "1.0.0"
+  server_url: "${AGGREGATION_SERVER_URL}"
+  edge_coordinator_discovery: true
+  auto_connect: true
+  connection_timeout: 30
+
+# Authentication Configuration
+authentication:
+  enable_biometric_auth: true
+  enable_pin_auth: true
+  session_timeout: 3600  # 1 hour
+  auto_logout_on_background: false
+  max_failed_attempts: 3
+
+# Training Configuration
+training:
+  enable_background_training: true
+  training_interval: 3600  # 1 hour
+  max_training_duration: 1800  # 30 minutes
+  min_battery_level: 0.3  # 30%
+  wifi_only_training: true
+  enable_while_charging_only: false
+
+# Resource Management
+resources:
+  max_memory_usage: "512MB"
+  max_cpu_usage: 0.5  # 50% of one core
+  max_storage_usage: "1GB"
+  enable_thermal_throttling: true
+  max_temperature: 40  # Celsius
+
+# Battery Optimization
+battery:
+  enable_battery_optimization: true
+  low_battery_threshold: 0.2  # 20%
+  critical_battery_threshold: 0.1  # 10%
+  reduce_frequency_on_low_battery: true
+  pause_training_on_critical_battery: true
+
+# Network Configuration
+network:
+  preferred_connection: "wifi"
+  allow_mobile_data: false
+  mobile_data_limit: "100MB"  # Per month
+  enable_compression: true
+  compression_level: 6
+  retry_attempts: 3
+  retry_backoff: 2
+
+# Data Configuration
+data:
+  enable_synthetic_data: true
+  synthetic_data_ratio: 0.8  # 80% synthetic, 20% real
+  data_cache_size: "256MB"
+  enable_data_validation: true
+  min_data_quality: 0.7
+
+# Privacy Configuration
+privacy:
+  enable_differential_privacy: true
+  privacy_budget: 0.5
+  enable_local_differential_privacy: true
+  noise_multiplier: 1.0
+  enable_secure_aggregation: true
+
+# Model Configuration
+model:
+  enable_model_compression: true
+  compression_ratio: 0.5
+  enable_quantization: true
+  quantization_bits: 8
+  enable_pruning: true
+  pruning_ratio: 0.3
+
+# Storage Configuration
+storage:
+  max_model_cache_size: "100MB"
+  max_data_cache_size: "256MB"
+  enable_encryption: true
+  encryption_algorithm: "AES-256"
+  auto_cleanup_enabled: true
+  cleanup_interval: 86400  # 24 hours
+
+# UI Configuration
+ui:
+  enable_notifications: true
+  notification_frequency: "daily"
+  enable_progress_indicators: true
+  enable_detailed_metrics: false  # Simplified for end users
+  theme: "auto"  # auto, light, dark
+
+# Monitoring Configuration
+monitoring:
+  enable_crash_reporting: true
+  enable_performance_monitoring: true
+  enable_usage_analytics: false  # Privacy-focused default
+  metrics_upload_interval: 86400  # 24 hours
+  enable_debug_logging: false
+
+# Security Configuration
+security:
+  enable_certificate_pinning: true
+  certificate_pins:
+    - "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="  # Replace with actual pin
+  enable_root_detection: true
+  enable_debug_detection: true
+  enable_tamper_detection: true
+
+# Compliance Configuration
+compliance:
+  gdpr_compliance: true
+  ccpa_compliance: true
+  enable_consent_management: true
+  data_retention_days: 30
+  enable_data_export: true
+  enable_data_deletion: true
+
+# Feature Flags
+features:
+  enable_experimental_features: false
+  enable_advanced_settings: false
+  enable_developer_mode: false
+  enable_offline_mode: true
+  enable_background_sync: true
+
+# Localization
+localization:
+  default_language: "en"
+  supported_languages:
+    - "en"
+    - "es"
+    - "fr"
+    - "de"
+    - "zh"
+  enable_rtl_support: true
+
+# Accessibility
+accessibility:
+  enable_voice_over: true
+  enable_large_text: true
+  enable_high_contrast: true
+  enable_reduced_motion: true
+
+# Performance
+performance:
+  enable_lazy_loading: true
+  enable_image_caching: true
+  max_concurrent_requests: 3
+  request_timeout: 30
+  enable_request_batching: true
+
+# Development Configuration (only in debug builds)
+development:
+  enable_debug_menu: false
+  enable_mock_data: false
+  mock_server_url: "http://localhost:8000"
+  enable_logging: false
+  log_level: "ERROR"

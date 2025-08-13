@@ -1,0 +1,289 @@
+# Production Alertmanager Configuration
+
+global:
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: 'alerts@your-domain.com'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Inhibit rules - prevent duplicate alerts
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  - source_match:
+      alertname: 'NodeDown'
+    target_match_re:
+      alertname: 'Node.*'
+    equal: ['instance']
+
+# Route configuration
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+      routes:
+        - match:
+            alertname: 'SystemDown'
+          receiver: 'system-down'
+        - match:
+            alertname: 'DataLoss'
+          receiver: 'data-loss'
+        - match:
+            alertname: 'SecurityBreach'
+          receiver: 'security-incident'
+
+    # High priority alerts
+    - match:
+        severity: high
+      receiver: 'high-priority'
+      repeat_interval: 30m
+
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      repeat_interval: 2h
+
+    # Federated learning specific alerts
+    - match:
+        category: 'federated-learning'
+      receiver: 'federated-learning-team'
+      repeat_interval: 1h
+
+    # Infrastructure alerts
+    - match:
+        category: 'infrastructure'
+      receiver: 'infrastructure-team'
+      repeat_interval: 1h
+
+    # Security alerts
+    - match:
+        category: 'security'
+      receiver: 'security-team'
+      repeat_interval: 15m
+
+# Receivers configuration
+receivers:
+  # Default receiver
+  - name: 'default'
+    email_configs:
+      - to: 'ops-team@your-domain.com'
+        subject: 'Federated Pipeline Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical-alerts@your-domain.com'
+        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        body: |
+          CRITICAL ALERT TRIGGERED
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#critical-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Instance:* {{ .Labels.instance }}
+          *Time:* {{ .StartsAt }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: '{{ .Annotations.dashboard_url }}'
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .Annotations.runbook_url }}'
+    
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_ROUTING_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}'
+        severity: 'critical'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+
+  # System down - immediate escalation
+  - name: 'system-down'
+    email_configs:
+      - to: 'executives@your-domain.com,ops-team@your-domain.com'
+        subject: '🚨 SYSTEM DOWN: Federated Pipeline'
+        body: |
+          SYSTEM DOWN ALERT
+          
+          The Federated Pipeline system is experiencing a critical outage.
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+          
+          Immediate action required.
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#incidents'
+        title: '🚨 SYSTEM DOWN'
+        text: 'Federated Pipeline system is down. Immediate action required.'
+    
+    webhook_configs:
+      - url: '${INCIDENT_WEBHOOK_URL}'
+        send_resolved: true
+
+  # Data loss - special handling
+  - name: 'data-loss'
+    email_configs:
+      - to: 'data-team@your-domain.com,executives@your-domain.com'
+        subject: '🚨 DATA LOSS DETECTED'
+        body: |
+          DATA LOSS ALERT
+          
+          Potential data loss has been detected in the Federated Pipeline system.
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Affected Data: {{ .Labels.data_type }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+          
+          Immediate backup and recovery procedures should be initiated.
+
+  # Security incident
+  - name: 'security-incident'
+    email_configs:
+      - to: 'security-team@your-domain.com,executives@your-domain.com'
+        subject: '🚨 SECURITY INCIDENT'
+        body: |
+          SECURITY INCIDENT DETECTED
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Threat Level: {{ .Labels.threat_level }}
+          Source: {{ .Labels.source_ip }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+          
+          Follow incident response procedures immediately.
+    
+    webhook_configs:
+      - url: '${SECURITY_WEBHOOK_URL}'
+        send_resolved: true
+
+  # High priority alerts
+  - name: 'high-priority'
+    email_configs:
+      - to: 'ops-team@your-domain.com'
+        subject: '⚠️ HIGH: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#alerts'
+        title: '⚠️ HIGH: {{ .GroupLabels.alertname }}'
+
+  # Warning alerts
+  - name: 'warnings'
+    email_configs:
+      - to: 'ops-team@your-domain.com'
+        subject: '⚠️ Warning: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Federated learning team
+  - name: 'federated-learning-team'
+    email_configs:
+      - to: 'ml-team@your-domain.com'
+        subject: 'FL Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Federated Learning Alert
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Training Round: {{ .Labels.training_round }}
+          Model: {{ .Labels.model_id }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Infrastructure team
+  - name: 'infrastructure-team'
+    email_configs:
+      - to: 'infra-team@your-domain.com'
+        subject: 'Infrastructure Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Security team
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@your-domain.com'
+        subject: 'Security Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Threat Level: {{ .Labels.threat_level }}
+          Source: {{ .Labels.source_ip }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+# Templates for custom formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

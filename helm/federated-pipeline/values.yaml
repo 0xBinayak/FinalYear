@@ -1,0 +1,323 @@
+# Default values for federated-pipeline
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: "registry.company.com"
+  imagePullSecrets:
+    - name: registry-secret
+  storageClass: "fast-ssd"
+
+# Environment configuration
+environment: production
+replicaCount: 3
+
+# Image configuration
+image:
+  registry: registry.company.com
+  repository: federated-pipeline
+  tag: "latest"
+  pullPolicy: Always
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Aggregation Server configuration
+aggregationServer:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: federated-pipeline/aggregation-server
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8000
+    metricsPort: 9090
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - aggregation-server
+          topologyKey: kubernetes.io/hostname
+
+# Edge Coordinator configuration
+edgeCoordinator:
+  enabled: true
+  deploymentType: daemonset  # or deployment
+  image:
+    repository: federated-pipeline/edge-coordinator
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8001
+    metricsPort: 9091
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  nodeSelector:
+    node-type: edge
+  tolerations:
+  - key: "edge-node"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# SDR Client configuration
+sdrClient:
+  enabled: false  # Disabled by default as it requires hardware
+  replicaCount: 1
+  image:
+    repository: federated-pipeline/sdr-client
+    tag: "latest"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  privileged: true  # Required for SDR hardware access
+  nodeSelector:
+    sdr-hardware: "true"
+
+# Mobile Client configuration
+mobileClient:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: federated-pipeline/mobile-client
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Database configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "postgres"
+    database: "federated_pipeline"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: "fast-ssd"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: "fast-ssd"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: 50Gi
+        storageClass: "fast-ssd"
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2
+          memory: 4Gi
+  
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "fast-ssd"
+    adminPassword: "admin"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+  
+  alertmanager:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: "fast-ssd"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: federated-pipeline.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: aggregation-server-service
+            port: 8000
+    - host: edge.federated-pipeline.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: edge-coordinator-service
+            port: 8001
+  tls:
+    - secretName: federated-pipeline-tls
+      hosts:
+        - federated-pipeline.company.com
+        - edge.federated-pipeline.company.com
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Configuration
+config:
+  # Federated learning parameters
+  federatedLearning:
+    aggregationStrategy: "byzantine_robust"
+    minClients: 10
+    maxClients: 1000
+    rounds: 50
+    localEpochs: 5
+    learningRate: 0.01
+    batchSize: 32
+  
+  # Privacy settings
+  privacy:
+    enableDifferentialPrivacy: true
+    epsilon: 0.5
+    delta: 1e-5
+    noiseMultiplier: 1.2
+  
+  # Monitoring settings
+  monitoring:
+    enableMetrics: true
+    logLevel: "INFO"
+    enableTracing: false
+
+# A/B Testing configuration
+abTesting:
+  enabled: false
+  testName: ""
+  trafficSplit: 0.5
+  variants:
+    A:
+      federatedLearning:
+        learningRate: 0.01
+        batchSize: 32
+    B:
+      federatedLearning:
+        learningRate: 0.005
+        batchSize: 64
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  storage:
+    size: 100Gi
+    storageClass: "standard"
+
+# Multi-region configuration
+multiRegion:
+  enabled: false
+  regions:
+    - name: us-west-1
+      primary: true
+    - name: us-east-1
+      primary: false
+    - name: eu-west-1
+      primary: false

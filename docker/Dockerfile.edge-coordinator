@@ -1,33 +1,82 @@
-# Multi-stage build for Edge Coordinator
-FROM python:3.11-slim as base
+# Multi-stage, multi-architecture build for Edge Coordinator
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+FROM --platform=$BUILDPLATFORM python:3.11-slim as base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements/edge-coordinator.txt .
-RUN pip install --no-cache-dir -r edge-coordinator.txt
+# Copy requirements and install Python dependencies
+COPY requirements/base.txt requirements/edge-coordinator.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r edge-coordinator.txt
 
 # Development stage
 FROM base as development
 COPY requirements/dev.txt .
 RUN pip install --no-cache-dir -r dev.txt
-COPY . .
-CMD ["python", "-m", "src.edge_coordinator.main"]
 
-# Production stage
-FROM base as production
+# Copy source code
 COPY src/ ./src/
 COPY config/ ./config/
 
-RUN useradd --create-home --shell /bin/bash app
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV ENVIRONMENT=development
+
+# Expose port
+EXPOSE 8001
+
+CMD ["python", "-m", "src.edge_coordinator.service"]
+
+# Production stage
+FROM base as production
+
+# Copy source code and configuration
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Create non-root user for security
+RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app && \
+    chown -R app:app /app
+
+# Switch to non-root user
 USER app
 
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV ENVIRONMENT=production
+
+# Expose port
+EXPOSE 8001
+
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-CMD ["python", "-m", "src.edge_coordinator.main"]
+# Use exec form for proper signal handling
+CMD ["python", "-m", "src.edge_coordinator.service"]
+
+# ARM-specific optimizations for edge devices
+FROM production as arm64
+RUN pip install --no-cache-dir --extra-index-url https://www.piwheels.org/simple/ \
+    numpy scipy scikit-learn
+
+# Lightweight version for resource-constrained devices
+FROM python:3.11-alpine as lightweight
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /app
+COPY requirements/base.txt ./
+RUN pip install --no-cache-dir -r base.txt
+COPY src/edge_coordinator/ ./src/edge_coordinator/
+COPY src/common/ ./src/common/
+COPY config/ ./config/
+ENV PYTHONPATH=/app
+EXPOSE 8001
+CMD ["python", "-m", "src.edge_coordinator.service"]

@@ -1,0 +1,159 @@
+# Edge Coordinator Production Configuration Template
+# Copy this file to edge-production.yaml and customize for your edge deployment
+
+# Edge Coordinator Configuration
+edge_coordinator:
+  region: "${EDGE_REGION}"
+  coordinator_id: "${EDGE_COORDINATOR_ID}"
+  max_local_clients: 20
+  aggregation_server_url: "${AGGREGATION_SERVER_URL}"
+  heartbeat_interval: 30
+  sync_interval: 300  # 5 minutes
+  offline_mode_enabled: true
+  max_offline_duration: 3600  # 1 hour
+
+# Local Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8001
+  workers: 2
+  max_connections: 100
+  timeout: 60
+
+# Local Database Configuration (SQLite for edge)
+database:
+  type: "sqlite"
+  path: "/app/data/edge_coordinator.db"
+  backup_interval: 3600  # 1 hour
+  max_backup_files: 24   # Keep 24 hours of backups
+
+# Local Cache Configuration
+cache:
+  type: "memory"
+  max_size: "256MB"
+  ttl: 1800  # 30 minutes
+
+# Resource Management
+resources:
+  cpu_limit: "2.0"
+  memory_limit: "2Gi"
+  storage_limit: "10Gi"
+  enable_resource_monitoring: true
+  resource_check_interval: 60
+
+# Network Configuration
+network:
+  connection_timeout: 30
+  read_timeout: 60
+  retry_attempts: 3
+  retry_backoff: 2
+  enable_compression: true
+  bandwidth_limit: "10Mbps"  # Optional bandwidth limiting
+
+# Client Management
+client_management:
+  max_clients: 20
+  client_timeout: 300
+  health_check_interval: 60
+  auto_remove_inactive_clients: true
+  inactive_threshold: 1800  # 30 minutes
+
+# Local Training Configuration
+local_training:
+  enable_local_aggregation: true
+  min_clients_for_aggregation: 3
+  local_training_rounds: 5
+  model_compression_enabled: true
+  differential_privacy_enabled: true
+  privacy_budget: 0.5
+
+# SDR Configuration
+sdr:
+  enabled: true
+  default_sdr_type: "rtlsdr"
+  supported_hardware:
+    - "rtlsdr"
+    - "hackrf"
+    - "usrp"
+  frequency_ranges:
+    fm: [88e6, 108e6]
+    gsm: [900e6, 1800e6]
+    wifi: [2.4e9, 2.5e9]
+  sample_rate: 2.4e6
+  gain_mode: "auto"
+
+# Security Configuration
+security:
+  enable_tls: true
+  cert_path: "/etc/ssl/certs/edge-coordinator.crt"
+  key_path: "/etc/ssl/private/edge-coordinator.key"
+  api_key: "${EDGE_API_KEY}"
+  enable_client_authentication: true
+  max_failed_auth_attempts: 5
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics_port: 9001
+  health_check_endpoint: "/health"
+  metrics_interval: 60
+  log_level: "INFO"
+  enable_performance_monitoring: true
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "/var/log/edge-coordinator/app.log"
+  max_size: "50MB"
+  backup_count: 3
+  format: "json"
+
+# Backup Configuration
+backup:
+  enabled: true
+  backup_interval: 3600  # 1 hour
+  backup_path: "/app/backups"
+  max_backup_files: 24
+  compress_backups: true
+
+# Offline Operation
+offline:
+  enable_offline_mode: true
+  max_offline_duration: 3600  # 1 hour
+  offline_storage_limit: "1GB"
+  sync_on_reconnect: true
+  conflict_resolution: "server_wins"
+
+# Performance Optimization
+performance:
+  enable_caching: true
+  cache_size: "128MB"
+  enable_compression: true
+  compression_level: 3
+  max_concurrent_operations: 5
+  batch_processing_enabled: true
+  batch_size: 10
+
+# Hardware Optimization
+hardware:
+  enable_gpu_acceleration: false  # Usually false for edge devices
+  cpu_affinity: []  # Empty means no affinity
+  memory_limit: "2GB"
+  enable_low_power_mode: true
+  thermal_throttling_enabled: true
+  max_temperature: 70  # Celsius
+
+# Data Quality
+data_quality:
+  enable_validation: true
+  min_signal_quality: 0.7
+  max_noise_level: 0.3
+  enable_outlier_detection: true
+  outlier_threshold: 2.0
+
+# Compliance
+compliance:
+  enable_audit_logging: true
+  data_retention_days: 30
+  enable_data_anonymization: true
+  privacy_mode: "strict"

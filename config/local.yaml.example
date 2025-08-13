@@ -1,0 +1,25 @@
+# Local development overrides (copy to local.yaml)
+# This file is for local development overrides and should not be committed
+
+database:
+  password: "your_local_password"
+  host: "localhost"
+
+network:
+  port: 8001  # Use different port for local development
+
+federated_learning:
+  min_clients: 1
+  max_clients: 5
+  rounds: 3
+
+monitoring:
+  log_level: "DEBUG"
+  enable_tracing: true
+
+# A/B testing for local development
+ab_test:
+  enabled: true
+  test_name: "local_dev_test"
+  variant: "A"
+  traffic_split: 0.5
