@@ -394,3 +394,7 @@ jobs:
             # This would typically use your registry's API to delete old images
             # Implementation depends on your container registry
           done
+  - name: Install GNU Radio
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y gnuradio python3-packaging
