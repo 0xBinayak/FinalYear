@@ -1,12 +1,22 @@
 """
-Configuration management system with environment-specific settings
+Advanced configuration management system with hierarchical configuration,
+validation, hot-reloading, and A/B testing capabilities
 """
 import os
 import yaml
 import json
-from typing import Dict, Any, Optional
+import threading
+import time
+import hashlib
+from typing import Dict, Any, Optional, List, Callable, Union
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from jsonschema import validate, ValidationError
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -54,6 +64,18 @@ class MonitoringConfig:
 
 
 @dataclass
+class ABTestConfig:
+    """A/B testing configuration for hyperparameter optimization"""
+    enabled: bool = False
+    test_name: str = ""
+    variant: str = "A"  # A or B
+    traffic_split: float = 0.5  # Percentage for variant A
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
+@dataclass
 class AppConfig:
     environment: str = "development"
     debug: bool = True
@@ -62,6 +84,9 @@ class AppConfig:
     federated_learning: FederatedLearningConfig = None
     privacy: PrivacyConfig = None
     monitoring: MonitoringConfig = None
+    ab_test: ABTestConfig = None
+    config_version: str = "1.0.0"
+    last_updated: Optional[str] = None
     
     def __post_init__(self):
         if self.database is None:
@@ -74,37 +99,101 @@ class AppConfig:
             self.privacy = PrivacyConfig()
         if self.monitoring is None:
             self.monitoring = MonitoringConfig()
+        if self.ab_test is None:
+            self.ab_test = ABTestConfig()
+
+
+class ConfigFileHandler(FileSystemEventHandler):
+    """File system event handler for configuration hot-reloading"""
+    
+    def __init__(self, config_manager):
+        self.config_manager = config_manager
+        self.last_modified = {}
+    
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+        
+        file_path = Path(event.src_path)
+        if file_path.suffix in ['.yaml', '.yml', '.json']:
+            # Debounce rapid file changes
+            current_time = time.time()
+            if file_path in self.last_modified:
+                if current_time - self.last_modified[file_path] < 1.0:
+                    return
+            
+            self.last_modified[file_path] = current_time
+            logger.info(f"Configuration file changed: {file_path}")
+            self.config_manager._reload_from_file_change(str(file_path))
 
 
 class ConfigManager:
-    """Configuration manager with environment-specific settings"""
+    """Advanced configuration manager with hierarchical configuration,
+    validation, hot-reloading, and A/B testing capabilities"""
     
     def __init__(self, config_dir: str = "config"):
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
         self._config: Optional[AppConfig] = None
-        self._watchers = []
+        self._config_lock = threading.RLock()
+        self._reload_callbacks: List[Callable[[AppConfig], None]] = []
+        self._observer: Optional[Observer] = None
+        self._file_hashes: Dict[str, str] = {}
+        self._ab_test_manager = ABTestManager()
+        self._schema = self._load_config_schema()
     
     def load_config(self, environment: str = None) -> AppConfig:
-        """Load configuration for specified environment"""
-        if environment is None:
-            environment = os.getenv("ENVIRONMENT", "development")
-        
-        # Load base configuration
-        base_config = self._load_config_file("base.yaml")
-        
-        # Load environment-specific configuration
-        env_config = self._load_config_file(f"{environment}.yaml")
-        
-        # Merge configurations
-        merged_config = self._merge_configs(base_config, env_config)
-        
-        # Override with environment variables
-        merged_config = self._apply_env_overrides(merged_config)
-        
-        # Create AppConfig instance
-        self._config = self._dict_to_config(merged_config)
-        return self._config
+        """Load configuration for specified environment with hierarchical merging"""
+        with self._config_lock:
+            if environment is None:
+                environment = os.getenv("ENVIRONMENT", "development")
+            
+            # Load configurations in hierarchical order
+            configs = []
+            
+            # 1. Load base configuration
+            base_config = self._load_config_file("base.yaml")
+            if base_config:
+                configs.append(base_config)
+            
+            # 2. Load environment-specific configuration
+            env_config = self._load_config_file(f"{environment}.yaml")
+            if env_config:
+                configs.append(env_config)
+            
+            # 3. Load local overrides (if exists)
+            local_config = self._load_config_file("local.yaml")
+            if local_config:
+                configs.append(local_config)
+            
+            # 4. Load user-specific overrides (if exists)
+            user_config = self._load_config_file(f"user-{os.getenv('USER', 'default')}.yaml")
+            if user_config:
+                configs.append(user_config)
+            
+            # Merge all configurations hierarchically
+            merged_config = {}
+            for config in configs:
+                merged_config = self._merge_configs(merged_config, config)
+            
+            # Override with environment variables
+            merged_config = self._apply_env_overrides(merged_config)
+            
+            # Apply A/B testing parameters
+            merged_config = self._apply_ab_testing(merged_config)
+            
+            # Create AppConfig instance
+            config_obj = self._dict_to_config(merged_config)
+            
+            # Validate configuration
+            if not self.validate_config(config_obj):
+                raise ValueError("Configuration validation failed")
+            
+            # Update file hashes for change detection
+            self._update_file_hashes()
+            
+            self._config = config_obj
+            return self._config
     
     def get_config(self) -> AppConfig:
         """Get current configuration"""
@@ -129,16 +218,99 @@ class ConfigManager:
             yaml.dump(config_dict, f, default_flow_style=False)
     
     def validate_config(self, config: AppConfig) -> bool:
-        """Validate configuration"""
+        """Comprehensive configuration validation using JSON schema"""
         try:
-            # Basic validation
-            assert config.network.port > 0
+            # Convert config to dict for schema validation
+            config_dict = asdict(config)
+            
+            # Validate against schema
+            if self._schema:
+                validate(instance=config_dict, schema=self._schema)
+            
+            # Additional business logic validation
+            assert config.network.port > 0 and config.network.port < 65536
             assert config.federated_learning.min_clients > 0
+            assert config.federated_learning.max_clients >= config.federated_learning.min_clients
             assert config.federated_learning.learning_rate > 0
             assert 0 < config.privacy.epsilon <= 10
+            assert config.privacy.delta > 0
+            assert config.federated_learning.rounds > 0
+            assert config.federated_learning.local_epochs > 0
+            
+            # A/B testing validation
+            if config.ab_test.enabled:
+                assert config.ab_test.variant in ["A", "B"]
+                assert 0 <= config.ab_test.traffic_split <= 1
+                assert config.ab_test.test_name
+            
             return True
-        except (AssertionError, AttributeError):
+        except (AssertionError, AttributeError, ValidationError) as e:
+            logger.error(f"Configuration validation failed: {e}")
             return False
+    
+    def enable_hot_reloading(self):
+        """Enable hot-reloading of configuration files"""
+        if self._observer is not None:
+            return  # Already enabled
+        
+        self._observer = Observer()
+        event_handler = ConfigFileHandler(self)
+        self._observer.schedule(event_handler, str(self.config_dir), recursive=False)
+        self._observer.start()
+        logger.info("Configuration hot-reloading enabled")
+    
+    def disable_hot_reloading(self):
+        """Disable hot-reloading of configuration files"""
+        if self._observer is not None:
+            self._observer.stop()
+            self._observer.join()
+            self._observer = None
+            logger.info("Configuration hot-reloading disabled")
+    
+    def add_reload_callback(self, callback: Callable[[AppConfig], None]):
+        """Add callback to be called when configuration is reloaded"""
+        self._reload_callbacks.append(callback)
+    
+    def remove_reload_callback(self, callback: Callable[[AppConfig], None]):
+        """Remove reload callback"""
+        if callback in self._reload_callbacks:
+            self._reload_callbacks.remove(callback)
+    
+    def _reload_from_file_change(self, file_path: str):
+        """Handle configuration reload from file system change"""
+        try:
+            old_config = self._config
+            new_config = self.load_config()
+            
+            # Notify callbacks of configuration change
+            for callback in self._reload_callbacks:
+                try:
+                    callback(new_config)
+                except Exception as e:
+                    logger.error(f"Error in reload callback: {e}")
+            
+            logger.info("Configuration reloaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to reload configuration: {e}")
+    
+    def _update_file_hashes(self):
+        """Update file hashes for change detection"""
+        for config_file in self.config_dir.glob("*.yaml"):
+            if config_file.is_file():
+                with open(config_file, 'rb') as f:
+                    content = f.read()
+                    self._file_hashes[str(config_file)] = hashlib.md5(content).hexdigest()
+    
+    def _load_config_schema(self) -> Optional[Dict[str, Any]]:
+        """Load JSON schema for configuration validation"""
+        schema_path = self.config_dir / "schema.json"
+        if schema_path.exists():
+            try:
+                with open(schema_path, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load config schema: {e}")
+        return None
     
     def _load_config_file(self, filename: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""
@@ -186,6 +358,32 @@ class ConfigManager:
         # Privacy overrides
         if os.getenv("PRIVACY_EPSILON"):
             config.setdefault("privacy", {})["epsilon"] = float(os.getenv("PRIVACY_EPSILON"))
+        
+        # A/B testing overrides
+        if os.getenv("AB_TEST_ENABLED"):
+            config.setdefault("ab_test", {})["enabled"] = os.getenv("AB_TEST_ENABLED").lower() == "true"
+        if os.getenv("AB_TEST_VARIANT"):
+            config.setdefault("ab_test", {})["variant"] = os.getenv("AB_TEST_VARIANT")
+        
+        return config
+    
+    def _apply_ab_testing(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply A/B testing parameters"""
+        ab_config = config.get("ab_test", {})
+        
+        if ab_config.get("enabled", False):
+            variant = self._ab_test_manager.get_variant(
+                test_name=ab_config.get("test_name", "default"),
+                traffic_split=ab_config.get("traffic_split", 0.5)
+            )
+            
+            ab_config["variant"] = variant
+            
+            # Apply variant-specific parameters
+            variant_params = ab_config.get("parameters", {}).get(variant, {})
+            if variant_params:
+                config = self._merge_configs(config, variant_params)
+                logger.info(f"Applied A/B test variant {variant} parameters: {variant_params}")
         
         return config
     
