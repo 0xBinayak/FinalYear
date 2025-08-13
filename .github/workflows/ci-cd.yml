@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: [ "3.11"]
         component:
           [aggregation-server, edge-coordinator, sdr-client, mobile-client]
 
@@ -30,17 +30,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-
+      
       - name: Install GNU Radio
         run: |
           sudo apt-get update
           sudo apt-get install -y gnuradio python3-packaging
+
 
       - name: Cache virtualenv
         uses: actions/cache@v3
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/*.txt') }}
+
 
       - name: Debug requirements file
         run: |
@@ -49,7 +51,7 @@ jobs:
           echo "=== Checking line 10 specifically ==="
           sed -n '10p' requirements/base.txt | cat -A
           echo "=== End debug ==="
-
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -58,6 +60,7 @@ jobs:
             -r requirements/${{ matrix.component }}.txt \
             -r requirements/dev.txt \
             -f https://download.pytorch.org/whl/torch_stable.html
+
 
       - name: Set up Python path
         run: |
@@ -187,16 +190,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-
+      
       - name: Install GNU Radio
         run: |
           sudo apt-get update
           sudo apt-get install -y gnuradio python3-packaging
+    
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements/dev.txt -f https://download.pytorch.org/whl/torch_stable.html
+
+
 
       - name: Set up Python path
         run: |
