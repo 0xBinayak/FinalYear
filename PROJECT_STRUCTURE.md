@@ -10,9 +10,24 @@ federated-pipeline/
 │   ├── sdr_client/               # SDR hardware client
 │   ├── mobile_client/            # Mobile device client
 │   ├── infrastructure/           # Infrastructure services
+│   ├── demonstration/            # Demonstration modules
+│   ├── monitoring/               # Monitoring and metrics
 │   └── common/                   # Shared components
 │       ├── interfaces.py         # Base interfaces and data models
 │       └── config.py            # Configuration management
+├── tests/                        # Test files
+│   ├── unit/                     # Unit tests
+│   ├── integration/              # Integration tests
+│   ├── performance/              # Performance tests
+│   └── security/                 # Security tests
+├── demos/                        # Demonstration scripts
+│   ├── field_testing/            # Field testing demonstrations
+│   ├── real_world/               # Real-world scenario demos
+│   ├── signal_processing/        # Signal processing demos
+│   ├── integration/              # Integration demonstrations
+│   ├── performance/              # Performance demonstrations
+│   ├── security/                 # Security demonstrations
+│   └── dashboards/               # Dashboard demonstrations
 ├── config/                       # Configuration files
 │   ├── base.yaml                # Base configuration
 │   ├── development.yaml         # Development environment

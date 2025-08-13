@@ -1,25 +1,12 @@
 #!/usr/bin/env python3
 """
-Standalone demonstration script for real-world federated learning with signal datasets.
+Real-world federated learning demonstration.
 This script showcases the complete demonstration system including:
 - Real signal dataset integration (RadioML 2016.10, 2018.01)
 - Multi-location federated learning scenarios
 - Real-time visualization of signal characteristics
 - Federated vs centralized learning comparison
 - Concept drift detection and adaptation
-
-Usage:
-    python demo_real_world_federated_learning.py [options]
-
-Examples:
-    # Quick demo (2 hours, 5 clients, no visualizations)
-    python demo_real_world_federated_learning.py --duration 2 --clients 5 --no-viz
-    
-    # Full demo with all features
-    python demo_real_world_federated_learning.py --duration 24 --clients 10
-    
-    # Concept drift focus
-    python demo_real_world_federated_learning.py --duration 12 --no-comparison
 """
 
 import asyncio
@@ -30,11 +17,11 @@ import logging
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from demonstration.real_world_demo import RealWorldDemonstration, DemoConfig
-from demonstration.dataset_integration import DatasetIntegrator
-from common.interfaces import SignalSample
+from src.demonstration.real_world_demo import RealWorldDemonstration, DemoConfig
+from src.demonstration.dataset_integration import DatasetIntegrator
+from src.common.interfaces import SignalSample
 import numpy as np
 from datetime import datetime
 
@@ -46,7 +33,7 @@ def setup_logging(level: str = "INFO"):
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('demo.log')
+            logging.FileHandler('demos/real_world/demo.log')
         ]
     )
 
@@ -68,16 +55,6 @@ def print_banner():
     ╚══════════════════════════════════════════════════════════════════════════════╝
     """
     print(banner)
-
-
-def print_progress_bar(iteration, total, prefix='Progress', suffix='Complete', length=50):
-    """Print a progress bar."""
-    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
-    bar = '█' * filled_length + '-' * (length - filled_length)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end='\r')
-    if iteration == total:
-        print()
 
 
 async def run_quick_demo():
@@ -173,77 +150,6 @@ async def demonstrate_dataset_integration():
     return scenario
 
 
-async def demonstrate_visualization():
-    """Demonstrate visualization capabilities."""
-    print("\n📈 Demonstrating Visualization Capabilities...")
-    
-    try:
-        from demonstration.visualization import SignalVisualization, VisualizationConfig
-        
-        config = VisualizationConfig(save_plots=True, output_dir="demo_visualizations")
-        viz = SignalVisualization(config)
-        
-        print("✅ Visualization system initialized")
-        print("  • Real-time signal constellation diagrams")
-        print("  • Interactive location maps")
-        print("  • Classification accuracy plots")
-        print("  • Concept drift visualization")
-        print("  • Federated vs centralized comparison charts")
-        
-        return viz
-        
-    except ImportError as e:
-        print(f"⚠️  Visualization dependencies not available: {e}")
-        print("  Install plotly and matplotlib for full visualization support")
-        return None
-
-
-async def demonstrate_concept_drift():
-    """Demonstrate concept drift detection."""
-    print("\n🔄 Demonstrating Concept Drift Detection...")
-    
-    from demonstration.concept_drift_demo import ConceptDriftSimulator, DriftDetector
-    
-    # Create drift simulator
-    simulator = ConceptDriftSimulator()
-    
-    # Generate drift events
-    events = simulator.generate_drift_timeline(duration_hours=12, num_events=3)
-    
-    print(f"Generated {len(events)} drift events:")
-    for i, event in enumerate(events, 1):
-        print(f"  {i}. {event.description}")
-        print(f"     Type: {event.drift_type}, Severity: {event.severity:.2f}")
-        print(f"     Affected: {', '.join(event.affected_modulations)}")
-    
-    # Demonstrate drift detection
-    detector = DriftDetector(window_size=20, threshold=0.5)
-    
-    print("\n🔍 Simulating drift detection...")
-    
-    # Simulate stable performance
-    for i in range(15):
-        result = detector.detect_drift(
-            current_accuracy=0.9 + np.random.normal(0, 0.02),
-            current_predictions=np.random.randint(0, 4, 10).tolist(),
-            current_confidences=np.random.uniform(0.8, 0.95, 10).tolist()
-        )
-        if i % 5 == 0:
-            print(f"  Step {i}: Drift Score = {result.drift_score:.3f}, Detected = {result.drift_detected}")
-    
-    # Simulate drift occurrence
-    print("  💥 Simulating concept drift...")
-    for i in range(10):
-        result = detector.detect_drift(
-            current_accuracy=0.6 + np.random.normal(0, 0.05),  # Degraded performance
-            current_predictions=[0, 0, 0, 1, 1, 1, 1, 1, 1, 1],  # Biased predictions
-            current_confidences=np.random.uniform(0.5, 0.7, 10).tolist()  # Lower confidence
-        )
-        if result.drift_detected:
-            print(f"  🚨 DRIFT DETECTED at step {15 + i}: Score = {result.drift_score:.3f}")
-            break
-
-
 async def run_full_demonstration(config: DemoConfig):
     """Run the complete demonstration."""
     print(f"\n🎯 Starting Full Demonstration...")
@@ -302,7 +208,6 @@ Examples:
   %(prog)s --quick                    # Quick demo with synthetic data
   %(prog)s --duration 2 --clients 5  # Short demo
   %(prog)s --duration 24 --clients 10 # Full 24-hour demo
-  %(prog)s --no-viz --no-comparison   # Focus on core functionality
         """
     )
     
@@ -318,13 +223,11 @@ Examples:
                        help="Disable concept drift demonstration")
     parser.add_argument("--no-comparison", action="store_true",
                        help="Disable federated vs centralized comparison")
-    parser.add_argument("--output-dir", type=str, default="demo_output",
+    parser.add_argument("--output-dir", type=str, default="demos/real_world/output",
                        help="Output directory for results")
     parser.add_argument("--log-level", type=str, default="INFO",
                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
                        help="Logging level")
-    parser.add_argument("--demo-components", action="store_true",
-                       help="Demonstrate individual components")
     
     args = parser.parse_args()
     
@@ -340,18 +243,11 @@ Examples:
             samples = await run_quick_demo()
             print(f"✅ Quick demo completed with {len(samples)} samples")
             
-        elif args.demo_components:
-            print("🔧 Component Demonstration Mode")
-            
-            # Demonstrate each component
-            scenario = await demonstrate_dataset_integration()
-            viz = await demonstrate_visualization()
-            await demonstrate_concept_drift()
-            
-            print("\n✅ Component demonstrations completed")
-            
         else:
             print("🎯 Full Demonstration Mode")
+            
+            # Demonstrate dataset integration first
+            scenario = await demonstrate_dataset_integration()
             
             config = DemoConfig(
                 duration_hours=args.duration,
