@@ -15,6 +15,7 @@ jobs:
   # Code Quality and Testing
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         python-version: [ "3.11"]
@@ -36,14 +37,12 @@ jobs:
           sudo apt-get install -y gnuradio python3-packaging
 
 
-      - name: Cache pip dependencies
+      - name: Cache virtualenv
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ matrix.component }}-v2-${{ hashFiles('requirements/*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-${{ matrix.component }}-v2-
-            ${{ runner.os }}-pip-v2-
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/*.txt') }}
+
 
       - name: Debug requirements file
         run: |
@@ -122,6 +121,7 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         component:
@@ -177,6 +177,7 @@ jobs:
   demo-test:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
@@ -223,6 +224,7 @@ jobs:
   integration-test:
     needs: [build, demo-test]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:15
@@ -281,6 +283,7 @@ jobs:
   performance-test:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
